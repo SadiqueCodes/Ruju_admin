@@ -81,6 +81,7 @@ export default function App() {
 
   const [bulkPostId, setBulkPostId] = useState('');
   const [bulkInput, setBulkInput] = useState('');
+  const [bulkSurahName, setBulkSurahName] = useState('');
   const [parsedRows, setParsedRows] = useState([]);
   const [parseReport, setParseReport] = useState(null);
   const [parseStatus, setParseStatus] = useState({ text: 'No parsed rows yet', kind: '' });
@@ -104,6 +105,28 @@ export default function App() {
   });
 
   const previewRows = useMemo(() => parsedRows.slice(0, 40), [parsedRows]);
+  const [editIndex, setEditIndex] = useState(null);
+  const [editSurahName, setEditSurahName] = useState('');
+
+  function startEditRow(idx) {
+    setEditIndex(idx);
+    setEditSurahName(parsedRows[idx]?.surah_name || '');
+  }
+
+  function saveEditRow(idx) {
+    setParsedRows((rows) => {
+      const updated = [...rows];
+      updated[idx] = { ...updated[idx], surah_name: editSurahName };
+      return updated;
+    });
+    setEditIndex(null);
+    setEditSurahName('');
+  }
+
+  function cancelEditRow() {
+    setEditIndex(null);
+    setEditSurahName('');
+  }
   const isAuthed = !!supabase;
 
   function isBusy(key) {
@@ -284,8 +307,14 @@ export default function App() {
 
   function parseBulk() {
     try {
+      if (!bulkSurahName.trim()) {
+        setParseStatus({ text: 'Please enter Surah name first', kind: 'err' });
+        return;
+      }
       const sourcePostId = Number(bulkPostId) || null;
-      const rows = parseTelegramPost(bulkInput, sourcePostId);
+      let rows = parseTelegramPost(bulkInput, sourcePostId);
+      // Set surah_name for all rows
+      rows = rows.map(row => ({ ...row, surah_name: bulkSurahName }));
       const report = validateRows(rows);
       setParsedRows(rows);
       setParseReport(report);
@@ -363,11 +392,20 @@ export default function App() {
               <span>Source Post ID</span>
               <input value={bulkPostId} onChange={(e) => setBulkPostId(e.target.value)} placeholder="optional" />
             </label>
+            <label className="field">
+              <span>Surah Name (for all rows)</span>
+              <input value={bulkSurahName} onChange={e => setBulkSurahName(e.target.value)} placeholder="e.g. Al-Fatiha" />
+            </label>
           </div>
           <label className="field">
             <span>Telegram Text</span>
             <textarea rows={12} value={bulkInput} onChange={(e) => setBulkInput(e.target.value)} />
           </label>
+          {bulkSurahName && (
+            <div className="sub" style={{ marginBottom: 8 }}>
+              <b>Current Surah Name:</b> {bulkSurahName}
+            </div>
+          )}
           <div className="row">
             <button className="btn" disabled={isBusy('bulk_parse')} onClick={() => runWithLoading('bulk_parse', async () => parseBulk())}>
               {isBusy('bulk_parse') ? 'Parsing...' : 'Parse'}
@@ -386,9 +424,19 @@ export default function App() {
           {parseReport ? <div className={`quality ${kindFromReport(parseReport)}`}>{summarizeReport(parseReport)}{parseReport.warnings.length ? ` | ${parseReport.warnings.join(' | ')}` : ''}</div> : null}
           <div className="tableWrap">
             <table>
-              <thead><tr><th>Surah</th><th>Name</th><th>Juz</th><th>Ayah</th><th>Arabic</th><th>Translation</th><th>Tafseer</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Surah</th>
+                  <th>Name</th>
+                  <th>Juz</th>
+                  <th>Ayah</th>
+                  <th>Arabic</th>
+                  <th>Translation</th>
+                  <th>Tafseer</th>
+                </tr>
+              </thead>
               <tbody>
-                {previewRows.map((row) => (
+                {previewRows.map((row, idx) => (
                   <tr key={`${row.surah_number}:${row.ayah_number}`}>
                     <td>{row.surah_number}</td>
                     <td>{row.surah_name}</td>
