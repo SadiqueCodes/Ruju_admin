@@ -5,5 +5,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5174,
+    allowedHosts: ['strut-resonate-purge.ngrok-free.dev'],
   },
 });
