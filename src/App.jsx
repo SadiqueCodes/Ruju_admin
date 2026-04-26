@@ -72,6 +72,7 @@ const NAV_ITEMS = [
   { key: 'post', label: 'Create Post' },
   { key: 'posts', label: 'My Posts' },
   { key: 'surah_name', label: 'Change Surah Name' },
+  { key: 'introduction', label: 'Surah Introduction' },
   { key: 'history', label: 'History' },
   { key: 'account', label: 'Account' },
 ];
@@ -167,6 +168,7 @@ export default function App() {
   const [manualStatus, setManualStatus] = useState({ text: 'Ready', kind: '' });
   const [postStatus, setPostStatus] = useState({ text: 'Ready', kind: '' });
   const [renameStatus, setRenameStatus] = useState({ text: 'Ready', kind: '' });
+  const [introStatus, setIntroStatus] = useState({ text: 'Ready', kind: '' });
   const [manual, setManual] = useState({
     surah_number: '',
     surah_name: '',
@@ -188,6 +190,11 @@ export default function App() {
   const [renameForm, setRenameForm] = useState({
     surah_number: '',
     surah_name: '',
+  });
+  const [introForm, setIntroForm] = useState({
+    surah_number: '',
+    surah_name: '',
+    introduction: '',
   });
 
   const previewRows = useMemo(() => parsedRows.slice(0, 40), [parsedRows]);
@@ -625,6 +632,42 @@ export default function App() {
     }
 
     await logUpload(supabase, 'surah_name_change', Number(affectedRows) || 0, `surah_number=${surahNumber}, surah_name=${surahName}`);
+    await refreshHistory();
+  }
+
+  async function upsertIntroduction() {
+    if (!ensureSignedIn(setIntroStatus)) return;
+    const surahNumber = Number(introForm.surah_number);
+    const surahName = cleanContent(introForm.surah_name || '');
+    const introduction = cleanContent(introForm.introduction || '');
+
+    if (!Number.isInteger(surahNumber) || surahNumber <= 0) {
+      setIntroStatus({ text: 'Valid Surah number is required', kind: 'err' });
+      return;
+    }
+    if (!introduction) {
+      setIntroStatus({ text: 'Introduction content is required', kind: 'err' });
+      return;
+    }
+
+    const payload = {
+      surah_number: surahNumber,
+      surah_name: surahName || null,
+      introduction,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('surah_introductions')
+      .upsert(payload, { onConflict: 'surah_number' });
+
+    if (error) {
+      setIntroStatus({ text: `Save failed: ${error.message}`, kind: 'err' });
+      return;
+    }
+
+    setIntroStatus({ text: `Saved introduction for Surah ${surahNumber}`, kind: 'ok' });
+    await logUpload(supabase, 'surah_introduction', 1, `surah_number=${surahNumber}`);
     await refreshHistory();
   }
 
@@ -1101,6 +1144,51 @@ export default function App() {
               onClick={() => runWithLoading('rename_surah', changeSurahNameOnly)}
             >
               {isBusy('rename_surah') ? 'Updating...' : 'Update Surah Name'}
+            </button>
+          </div>
+        </>
+      );
+    }
+
+    if (activePage === 'introduction') {
+      return (
+        <>
+          <div className="head"><h2>Surah Introduction</h2><span className={`pill ${introStatus.kind}`}>{introStatus.text}</span></div>
+          <p className="sub">Add or update introduction for one Surah. This appears as the first card in app reader.</p>
+          <div className="grid g2">
+            <label className="field">
+              <span>Surah Number</span>
+              <input
+                value={introForm.surah_number}
+                onChange={(e) => setIntroForm((p) => ({ ...p, surah_number: e.target.value }))}
+                placeholder="e.g. 2"
+              />
+            </label>
+            <label className="field">
+              <span>Surah Name (optional)</span>
+              <input
+                value={introForm.surah_name}
+                onChange={(e) => setIntroForm((p) => ({ ...p, surah_name: e.target.value }))}
+                placeholder="e.g. Al-Baqarah"
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Introduction Content</span>
+            <textarea
+              rows={12}
+              value={introForm.introduction}
+              onChange={(e) => setIntroForm((p) => ({ ...p, introduction: e.target.value }))}
+              placeholder="Write introduction text..."
+            />
+          </label>
+          <div className="row">
+            <button
+              className="btn gold"
+              disabled={isBusy('intro_upsert')}
+              onClick={() => runWithLoading('intro_upsert', upsertIntroduction)}
+            >
+              {isBusy('intro_upsert') ? 'Saving...' : 'Save Introduction'}
             </button>
           </div>
         </>
