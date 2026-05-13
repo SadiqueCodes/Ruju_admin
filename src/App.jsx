@@ -357,11 +357,38 @@ export default function App() {
       : cleaned.toUpperCase();
   }
 
-  function cleanPostText(text) {
-    return String(text || '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-  }
+function cleanPostText(text) {
+  return String(text || '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
 
-  function getPostMarker() {
+function sanitizeIntroductionText(value) {
+  let out = String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+  out = out
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+    .replace(/[\u2600-\u27BF]/g, '');
+
+  out = out
+    .replace(/\{[^}\n]*to\s*be\s*continued[^}\n]*\}/gi, ' ')
+    .replace(/\([^)\n]*to\s*be\s*continued[^)\n]*\)/gi, ' ')
+    .replace(/\[[^\]\n]*to\s*be\s*continued[^\]\n]*\]/gi, ' ')
+    .replace(/\bto\s*be\s*continued\s*,?\s*in\s*sha+a+\s*allah\b/gi, ' ')
+    .replace(/\bto\s*be\s*continued\s*,?\s*in\s*shallah\b/gi, ' ')
+    .replace(/\bto\s*be\s*continued\b/gi, ' ');
+
+  return out
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function getPostMarker() {
     const frameKey = postForm.frameKey || 'plain';
     const styleKey = postForm.styleKey || 'serif';
     const color = normalizeHexColor(postForm.textColor);
@@ -639,7 +666,7 @@ export default function App() {
     if (!ensureSignedIn(setIntroStatus)) return;
     const surahNumber = Number(introForm.surah_number);
     const surahName = cleanContent(introForm.surah_name || '');
-    const introduction = cleanContent(introForm.introduction || '');
+    const introduction = sanitizeIntroductionText(cleanContent(introForm.introduction || ''));
 
     if (!Number.isInteger(surahNumber) || surahNumber <= 0) {
       setIntroStatus({ text: 'Valid Surah number is required', kind: 'err' });
