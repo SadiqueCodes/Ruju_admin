@@ -138,7 +138,8 @@ function extractHeader(rawText) {
 
 function splitAyahBlocks(rawText) {
   const text = String(rawText || '');
-  const marker = /(?:^|\n)[^\n]*Aayat\s*No\.?\s*([0-9]+(?:\s*[-\u2013]\s*[0-9]+)?)[^\n]*\n?/gim;
+  // Accept common spellings: Ayah/Aayah/Ayat/Aayat/Ayaat.
+  const marker = /(?:^|\n)[^\n]*A(?:yah|ayah|yat|ayat|yaat)\s*No\.?\s*([0-9]+(?:\s*[-\u2013]\s*[0-9]+)?)[^\n]*\n?/gim;
   const hits = Array.from(text.matchAll(marker));
   const blocks = [];
   for (let i = 0; i < hits.length; i += 1) {
