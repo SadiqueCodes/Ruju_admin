@@ -162,8 +162,22 @@ function parseAyahRange(rangeLabel) {
 }
 
 function isArabicLine(line) {
-  return /[\u0600-\u06FF]/.test(line || '');
+  const text = line || '';
+  // Must contain at least one Arabic character
+  if (!/[\u0600-\u06FF]/.test(text)) {
+    return false;
+  }
+  // Must not contain Latin letters (indicates explanation/translation)
+  if (/[a-zA-Z]/.test(text)) {
+    return false;
+  }
+  // Must not contain Devanagari (Hindi) characters
+  if (/[\u0900-\u097F]/.test(text)) {
+    return false;
+  }
+  return true;
 }
+
 
 function isTranslationLine(line) {
   const t = String(line || '').trim();
