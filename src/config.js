@@ -6,5 +6,6 @@ export const ADMIN_PANEL_CONFIG = {
     'alisadique800@gmail.com',
     'zainabansari272004@gmail.com',
     'zainabansari3497@gmail.com',
+    'shaheen.vkl@gmail.com',
   ],
 };
